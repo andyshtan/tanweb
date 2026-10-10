@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mathematical Resonance</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='none' stroke='%238888ff' stroke-width='8'/></svg>">
+    
+    <!-- Three.js required for Hopf Fibration -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
     <style>
         /* --- GLOBAL STYLES --- */
         body, html {
@@ -24,44 +29,28 @@
             background-color: #000000;
         }
 
-        /* --- TAN.ID STYLES (MAURER ROSE) --- */
+        /* --- TAN.ID STYLES (HOPF FIBRATION) --- */
         #tan-app {
-            justify-content: center;
-            align-items: center;
+            background: radial-gradient(circle at center, #111b2b 0%, #000000 100%);
         }
-        #scene-container {
-            position: relative;
-            width: 100vmin;
-            height: 100vmin;
-            perspective: 1500px;
-            z-index: 2;
-        }
-        #core-glow {
+        #tan-info {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 45vmin;
-            height: 45vmin;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(90, 40, 255, 0.15) 0%, rgba(0,0,0,0) 70%);
-            filter: blur(25px);
+            top: 40px;
+            left: 40px;
+            z-index: 100;
             pointer-events: none;
+            text-shadow: 0 4px 15px rgba(0,0,0,0.8);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            max-width: 450px;
+            color: #fff;
         }
-        svg#tan-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            filter: drop-shadow(0 0 20px rgba(120, 80, 255, 0.2));
-            transform-style: preserve-3d;
-            animation: breathe 240s infinite alternate ease-in-out;
-        }
-        @keyframes breathe {
-            0% { transform: scale(0.95) rotateX(12deg) rotateY(-12deg); }
-            100% { transform: scale(1.05) rotateX(-12deg) rotateY(12deg); }
-        }
+        #tan-info h1 { font-weight: 200; letter-spacing: 3px; font-size: 2rem; margin: 0 0 15px 0; color: #fff; }
+        #tan-info p { font-weight: 300; color: #cbd5e1; margin: 0 0 12px 0; line-height: 1.6; font-size: 0.95rem; }
+        #tan-info strong { color: #38bdf8; font-weight: 500; }
 
         /* --- COOL.ID STYLES (SUN & PLANETS) --- */
         #cool-app {
@@ -96,12 +85,16 @@
 </head>
 <body>
 
-    <!-- TAN.ID: MAURER ROSE -->
+    <!-- TAN.ID: HOPF FIBRATION -->
     <div id="tan-app">
-        <div id="scene-container">
-            <div id="core-glow"></div>
-            <svg id="tan-canvas" viewBox="-500 -500 1000 1000"></svg>
+        <div id="tan-info">
+            <h1>The Hopf Fibration</h1>
+            <p>I hear you. If you want pure, undeniable geometric beauty, fractals and chaos might be too messy. We need <strong>Topology</strong>.</p>
+            <p>This is the <strong>Hopf Fibration</strong>. It visualizes a mathematical mapping from a 4-dimensional sphere down to a 3-dimensional sphere.</p>
+            <p>Every single point on the 3D sphere is actually a perfect, unbroken circle in 4D space. Through stereographic projection, these 4D circles project into 3D as a breathtaking arrangement of <strong>perfectly interlocking, nested rings that never intersect</strong>.</p>
+            <p style="font-size: 0.8rem; opacity: 0.6; margin-top: 20px;">(Click and drag to rotate, scroll to zoom)</p>
         </div>
+        <div id="tan-app-container" style="width: 100%; height: 100%;"></div>
     </div>
 
     <!-- COOL.ID: SUN & PLANETS -->
@@ -178,61 +171,89 @@
             document.getElementById('cool-app').style.display = 'flex';
             document.querySelector("link[rel*='icon']").href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23FFA500'/></svg>";
         } else {
-            // --- INITIALIZE TAN.ID (MAURER ROSE) ---
-            document.getElementById('tan-app').style.display = 'flex';
+            // --- INITIALIZE TAN.ID (HOPF FIBRATION) ---
+            document.title = "Hopf Fibration - Mathematical Elegance";
+            document.getElementById('tan-app').style.display = 'block';
             
-            const canvasSvg = document.getElementById('tan-canvas');
-            const numShapes = 32; 
-            const paths = [];
+            const container = document.getElementById('tan-app-container');
+            const scene = new THREE.Scene();
 
-            for(let i=0; i<numShapes; i++) {
-                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                path.setAttribute("fill", "none");
-                const strokeW = 0.3 + (1 - i / numShapes) * 1.5; 
-                path.setAttribute("stroke-width", strokeW.toString());
-                path.setAttribute("style", "mix-blend-mode: color-dodge; stroke-linecap: round;");
-                canvasSvg.appendChild(path);
-                paths.push(path);
+            const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 4, 12);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 1.5;
+
+            const group = new THREE.Group();
+            scene.add(group);
+
+            function stereographic(x1, x2, x3, x4) {
+                const div = 1.0 - x4 + 0.00001; 
+                return new THREE.Vector3(x1 / div, x2 / div, x3 / div);
             }
 
-            let morphTime = 0;
-            let colorTime = 0;
+            const numLatitudes = 20;
+            const numLongitudes = 45;
+            const pointsPerFiber = 120;
 
-            function animate() {
-                morphTime += 0.00001; 
-                colorTime += 0.0005;  
-
-                for(let p=0; p<numShapes; p++) {
-                    const t = morphTime + p * 0.035;
-                    const n = Math.sin(t * 0.8) * 5 + 7;
-                    const d = Math.cos(t * 0.5) * 15 + 29;
-                    const scale = 460 - p * 13; 
-                    
-                    let dStr = "";
-                    for (let i = 0; i <= 360; i += 1) { 
-                        const k = i * d * Math.PI / 180;
-                        const r = scale * Math.sin(n * k);
-                        const baseX = r * Math.cos(k);
-                        const baseY = r * Math.sin(k);
-                        const rot = t * 1.5;
-                        const x = baseX * Math.cos(rot) - baseY * Math.sin(rot);
-                        const y = baseX * Math.sin(rot) + baseY * Math.cos(rot);
-                        
-                        if (i === 0) dStr += `M ${x.toFixed(2)} ${y.toFixed(2)} `;
-                        else dStr += `L ${x.toFixed(2)} ${y.toFixed(2)} `;
+            for (let i = 1; i < numLatitudes; i++) {
+                const theta = (i / numLatitudes) * Math.PI; 
+                for (let j = 0; j < numLongitudes; j++) {
+                    const phi = (j / numLongitudes) * Math.PI * 2; 
+                    const points = [];
+                    for (let k = 0; k <= pointsPerFiber; k++) {
+                        const xi = (k / pointsPerFiber) * Math.PI * 2; 
+                        const x1 = Math.sin(theta / 2) * Math.cos(xi);
+                        const x2 = Math.sin(theta / 2) * Math.sin(xi);
+                        const x3 = Math.cos(theta / 2) * Math.cos(xi + phi);
+                        const x4 = Math.cos(theta / 2) * Math.sin(xi + phi);
+                        points.push(stereographic(x1, x2, x3, x4));
                     }
-                    
-                    const hue = 250 + Math.sin(colorTime + p * 0.1) * 70; 
-                    const depthRatio = 1 - (p / numShapes); 
-                    const lightness = 40 + depthRatio * 25 + Math.sin(colorTime * 4 + p) * 10;
-                    
-                    paths[p].setAttribute("d", dStr);
-                    paths[p].setAttribute("stroke", `hsla(${hue}, 95%, ${lightness}%, ${0.15 + depthRatio * 0.45})`);
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const hue = (phi / (Math.PI * 2));
+                    const lightness = 0.4 + 0.4 * Math.sin(theta);
+                    const material = new THREE.LineBasicMaterial({
+                        color: new THREE.Color().setHSL(hue, 1.0, lightness),
+                        transparent: true,
+                        opacity: 0.25,
+                        blending: THREE.AdditiveBlending,
+                        depthWrite: false,
+                        linewidth: 1
+                    });
+                    const line = new THREE.Line(geometry, material);
+                    group.add(line);
                 }
-                
+            }
+
+            const coreGeo = new THREE.SphereGeometry(0.5, 32, 32);
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.05, blending: THREE.AdditiveBlending });
+            const core = new THREE.Mesh(coreGeo, coreMat);
+            group.add(core);
+
+            let time = 0;
+            function animate() {
                 requestAnimationFrame(animate);
+                controls.update();
+                time += 0.01;
+                const scale = 1.0 + 0.02 * Math.sin(time);
+                group.scale.set(scale, scale, scale);
+                renderer.render(scene, camera);
             }
             animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
         }
     </script>
 </body>
